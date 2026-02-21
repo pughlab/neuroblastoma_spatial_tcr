@@ -3,6 +3,7 @@
 
 # Allow gitignore
 !.gitignore
+!README.md
 
 # Allow scripts directory
 !scripts/
