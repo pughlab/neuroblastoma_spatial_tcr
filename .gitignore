@@ -1,0 +1,14 @@
+# Ignore everything
+*
+
+# Allow gitignore
+!.gitignore
+
+# Allow scripts directory
+!scripts/
+
+# Allow only selected notebooks
+!scripts/1.process_and_integrate.ipynb
+!scripts/2.subcluster_and_visualize_metadata.ipynb
+!scripts/4.correlate_distance_and_genelists.ipynb
+!scripts/5.find_domains.ipynb
