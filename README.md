@@ -26,6 +26,35 @@ populations.
 4. **find_domains**  
    Identification of latent spatial domains.
 
+
+## Bulk TCR Analysis Workflow
+
+Directory: `scripts/6.tcr_bulk/`
+
+This directory contains the bulk TCR processing and clonotype analysis 
+pipeline:
+
+1. **MiXCR**
+   - `1_run_mixcr_command_example.sh`
+   - Alignment and clonotype assembly from raw TCR sequencing data.
+
+2. **GLIPH2**
+   - `2_concatenate_gliph_input.R`
+   - `3_gliph_community_detection.R`
+   - Clonotype clustering and antigen-specific community detection.
+
+3. **Immunarch**
+   - `4_immunarch_tcrs.R`
+   - Diversity, repertoire metrics, and comparative analysis.
+
+4. **TCR probe visualization**
+   - `5_make_sankey_plot.ipynb`
+   - Sankey-based visualization of clonotype relationships and dynamics.
+
+Pipeline summary:
+
+MiXCR → GLIPH2 → Immunarch → Visualization
+
 ## Environment
 
 Coming soon.
