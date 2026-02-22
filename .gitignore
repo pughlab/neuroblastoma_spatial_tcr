@@ -13,3 +13,12 @@
 !scripts/2.subcluster_and_visualize_metadata.ipynb
 !scripts/4.correlate_distance_and_genelists.ipynb
 !scripts/5.find_domains.ipynb
+!scripts/7.find_tcr_clonotypes.ipynb
+
+# Allow tcr_bulk directory and specific files
+!scripts/6.tcr_bulk/
+!scripts/6.tcr_bulk/1_run_mixcr_command_example.sh
+!scripts/6.tcr_bulk/2_concatenate_gliph_input.R
+!scripts/6.tcr_bulk/3_gliph_community_detection.R
+!scripts/6.tcr_bulk/4_immunarch_tcrs.R
+!scripts/6.tcr_bulk/5_make_sankey_plot.ipynb
