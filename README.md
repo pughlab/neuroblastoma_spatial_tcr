@@ -7,6 +7,7 @@ This repository contains custom code for Xenium and CapTCR-seq TCR profiling in 
 scripts/
 - 1.process_and_integrate.ipynb  
 - 2.subcluster_and_visualize_metadata.ipynb  
+- 3.calculate_celltype_proportions_and_neighborhoods.ipynb
 - 4.correlate_distance_and_genelists.ipynb  
 - 5.find_domains.ipynb  
 
@@ -20,10 +21,14 @@ data.
    Subclustering and metadata-based visualization of spatially resolved cell 
 populations.
 
-3. **correlate_distance_and_genelists**  
+3. **calculate_celltype_proportions_and_neighborhoods**  
+   Computes cell type proportions and spatial neighborhood 
+metrics/enrichment.
+
+4. **correlate_distance_and_genelists**  
    Spatial distance calculations and correlation with gene signatures.
 
-4. **find_domains**  
+5. **find_domains**  
    Identification of latent spatial domains.
 
 

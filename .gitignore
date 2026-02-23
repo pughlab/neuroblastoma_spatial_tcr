@@ -11,6 +11,7 @@
 # Allow only selected notebooks
 !scripts/1.process_and_integrate.ipynb
 !scripts/2.subcluster_and_visualize_metadata.ipynb
+!scripts/3.calculate_celltype_proportions_and_neighborhoods.ipynb
 !scripts/4.correlate_distance_and_genelists.ipynb
 !scripts/5.find_domains.ipynb
 !scripts/7.find_tcr_clonotypes.ipynb
