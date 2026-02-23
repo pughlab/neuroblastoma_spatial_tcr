@@ -16,7 +16,7 @@ scripts/
     - 3_gliph_community_detection.R
     - 4_immunarch_tcrs.R
     - 5_make_sankey_plot.ipynb
-- 7. find_tcr_clonotypes.ipynb
+* 7.find_tcr_clonotypes.ipynb
 
 ## Notebook Overview
 
