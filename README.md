@@ -4,19 +4,22 @@ This repository contains custom code for Xenium and CapTCR-seq TCR profiling in 
 
 ## Repository Structure
 
-scripts/
-- 1.process_and_integrate.ipynb  
-- 2.subcluster_and_visualize_metadata.ipynb  
-- 3.calculate_celltype_proportions_and_neighborhoods.ipynb
-- 4.correlate_distance_and_genelists.ipynb  
-- 5.find_domains.ipynb  
-- 6.tcr_bulk/
-    - 1_run_mixcr_command_example.sh
-    - 2_concatenate_gliph_input.R
-    - 3_gliph_community_detection.R
-    - 4_immunarch_tcrs.R
-    - 5_make_sankey_plot.ipynb
-* 7.find_tcr_clonotypes.ipynb
+```
+neuroblastoma_spatial_tcr/
+└── scripts/
+    ├── 1.process_and_integrate.ipynb
+    ├── 2.subcluster_and_visualize_metadata.ipynb
+    ├── 3.calculate_celltype_proportions_and_neighborhoods.ipynb
+    ├── 4.correlate_distance_and_genelists.ipynb
+    ├── 5.find_domains.ipynb
+    ├── 7.find_tcr_clonotypes.ipynb
+    └── 6.tcr_bulk/
+        ├── 1_run_mixcr_command_example.sh
+        ├── 2_concatenate_gliph_input.R
+        ├── 3_gliph_community_detection.R
+        ├── 4_immunarch_tcrs.R
+        └── 5_make_sankey_plot.ipynb
+```
 
 ## Notebook Overview
 
@@ -44,3 +47,27 @@ GLIPH2, Immunarch and TCR probe visualization.
 
 7. **find_tcr_clonotypes**
    Clonotype-aware spatial analysis.
+
+## Software Requirements
+
+### Python Environment
+See `requirements.txt` for Python package dependencies.
+
+### External Tools
+
+- **MiXCR** v4.6.0  
+  Used for TCR alignment and clonotype assembly in 
+`scripts/6.tcr_bulk/1_run_mixcr_command_example.sh`.
+
+  Download: https://github.com/milaboratory/mixcr  
+
+- **GLIPH2**
+  Use online: http://50.255.35.37:8080
+
+- **R** v4.4.0
+
+- R packages:
+  - immunarch v0.10.3
+  - igraph v2.2.1
+  - ggplot2 v4.0.0
+  - dplyr v1.1.4
