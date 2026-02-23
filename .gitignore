@@ -1,9 +1,10 @@
 # Ignore everything
 *
 
-# Allow gitignore
+# Allow gitignore, README and requirements
 !.gitignore
 !README.md
+!requirements.txt
 
 # Allow scripts directory
 !scripts/
