@@ -12,9 +12,9 @@ neuroblastoma_spatial_tcr/
     ├── 3.calculate_celltype_proportions_and_neighborhoods.ipynb
     ├── 4.correlate_distance_and_genelists.ipynb
     ├── 5.find_domains.ipynb
-    ├── 7.find_tcr_clonotypes.ip
-    ├─manu_figs/
-    ├─manu_sourcedata/
+    ├── 7.find_tcr_clonotypesynb
+    ├── manu_figs/
+    ├── manu_sourcedata/
     └── 6.tcr_bulk/
         ├── 1_run_mixcr_command_example.sh
         ├─2_immunarch_tcrs.R
