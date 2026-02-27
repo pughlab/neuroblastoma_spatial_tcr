@@ -1,9 +1,6 @@
 # Ignore everything
 *
 
-# Ignore macOS metadata
-.DS_Store
-
 # Allow gitignore, README and requirements
 !.gitignore
 !README.md
@@ -32,3 +29,8 @@
 
 !manu_figs/
 !manu_figs/**
+
+# Ignore macOS metadata
+.DS_Store
+
+
