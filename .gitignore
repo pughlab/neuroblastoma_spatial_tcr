@@ -1,6 +1,9 @@
 # Ignore everything
 *
 
+# Ignore macOS metadata
+.DS_Store
+
 # Allow gitignore, README and requirements
 !.gitignore
 !README.md
@@ -20,7 +23,12 @@
 # Allow tcr_bulk directory and specific files
 !scripts/6.tcr_bulk/
 !scripts/6.tcr_bulk/1_run_mixcr_command_example.sh
-!scripts/6.tcr_bulk/2_concatenate_gliph_input.R
-!scripts/6.tcr_bulk/3_gliph_community_detection.R
-!scripts/6.tcr_bulk/4_immunarch_tcrs.R
-!scripts/6.tcr_bulk/5_make_sankey_plot.ipynb
+!scripts/6.tcr_bulk/2_immunarch_tcrs.R
+!scripts/6.tcr_bulk/3_make_sankey_plot.ipynb
+
+# Manuscript figures and source data
+!manu_sourcedata/
+!manu_sourcedata/**
+
+!manu_figs/
+!manu_figs/**

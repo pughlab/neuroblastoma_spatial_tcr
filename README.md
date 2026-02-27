@@ -12,13 +12,13 @@ neuroblastoma_spatial_tcr/
     ├── 3.calculate_celltype_proportions_and_neighborhoods.ipynb
     ├── 4.correlate_distance_and_genelists.ipynb
     ├── 5.find_domains.ipynb
-    ├── 7.find_tcr_clonotypes.ipynb
+    ├── 7.find_tcr_clonotypes.ip
+    ├─manu_figs/
+    ├─manu_sourcedata/
     └── 6.tcr_bulk/
         ├── 1_run_mixcr_command_example.sh
-        ├── 2_concatenate_gliph_input.R
-        ├── 3_gliph_community_detection.R
-        ├── 4_immunarch_tcrs.R
-        └── 5_make_sankey_plot.ipynb
+        ├─2_immunarch_tcrs.R
+        └─3_make_sankey_plot.ipynb
 ```
 
 ## Notebook Overview
@@ -43,7 +43,7 @@ metrics/enrichment.
 
 6. **tcr_bulk/**
    CapTCR-seq processing and clonotype anlaysis pipeline including MiXCR4, 
-GLIPH2, Immunarch and TCR probe visualization.
+Immunarch and TCR probe visualization.
 
 7. **find_tcr_clonotypes**
    Clonotype-aware spatial analysis.
