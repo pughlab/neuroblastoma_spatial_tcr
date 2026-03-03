@@ -30,6 +30,9 @@
 !manu_figs/
 !manu_figs/**
 
+# Do not track manuscript master PDF
+manu_figs/xenium_26_figs.pdf
+
 # Ignore macOS metadata
 .DS_Store
 
