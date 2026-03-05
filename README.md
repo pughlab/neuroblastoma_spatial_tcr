@@ -16,8 +16,8 @@ neuroblastoma_spatial_tcr/
     ├── manu_figs/
     ├── manu_sourcedata/
     └── 6.tcr_bulk/
-        ├── 1_run_mixcr_command_example.sh
-        ├─2_immunarch_tcrs.R
+        ├─1_run_mixcr_command_example.sh
+        ├─2_immunarch_tcrs
         └─3_make_sankey_plot.ipynb
 ```
 
@@ -57,12 +57,7 @@ See `requirements.txt` for Python package dependencies.
 
 **MiXCR** v4.6.0 (https://github.com/milaboratory/mixcr)
 
-**GLIPH2** (http://50.255.35.37:8080)
-
 **R** v4.4.0
-
-**R** packages:
 - immunarch v0.10.3
-- igraph v2.2.1
 - ggplot2 v4.0.0
 - dplyr v1.1.4
