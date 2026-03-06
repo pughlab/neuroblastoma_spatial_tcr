@@ -1,6 +1,7 @@
-# Neuroblastoma Spatial TCR Analysis
+# Longitudinal and spatial T-cell receptor profiling links tumor-immune segregation to T-cell phenotype in high-risk neuroblastoma
 
-This repository contains custom code for Xenium and CapTCR-seq TCR profiling in neuroblastoma samples.
+## Abstract
+Insert text.
 
 ## Repository Structure
 
@@ -33,7 +34,7 @@ neuroblastoma_spatial_tcr/
 └── manu_sourcedata/      # source data tables associated with manuscript figures
 ```
 
-## Notebook Overview
+## Overview of Notebooks and Scripts
 
 1. **process_and_integrate**  
    Preprocessing, integration, and harmonization of spatial transcriptomics 
@@ -53,14 +54,14 @@ metrics/enrichment.
 5. **find_domains**  
    Identification of latent spatial domains using scimap.
 
-6. **tcr_bulk/**
+6. **tcr_bulk/**  
    CapTCR-seq processing and clonotype anlaysis pipeline including MiXCR4, 
 Immunarch and TCR probe visualization.
 
-7. **find_tcr_clonotypes**
+7. **find_tcr_clonotypes**  
    Clonotype-aware spatial analysis.
 
-8. **cci**
+8. **cci/**  
    Cell-cell interaction analysis using stlearn.
 
 ## Software Requirements
