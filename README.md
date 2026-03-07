@@ -1,7 +1,7 @@
-# Longitudinal and spatial T-cell receptor profiling links tumor-immune segregation to T-cell phenotype in high-risk neuroblastoma
+# Spatially resolved T cell receptor tracking links tumor-immune segregation to clonotype-specific T cell states in high-risk neuroblastoma
 
 ## Abstract
-Insert text.
+High-risk neuroblastoma (HRNB) is a leading cause of pediatric cancer death, and the contribution of T cells to disease biology and treatment response remains poorly defined. To address this, we combined longitudinal bulk T cell receptor (TCR) sequencing with spatial transcriptomics and in situ TCR profiling in paired pre- and post-therapy HRNB samples to map T cell geography and phenotype. We found that tumors were not uniformly immune-cold but instead contained distinct spatial immune niches and tumor-dense regions. Across therapy, samples diverged along two ecological trajectories yet consistently retained this tumor-immune segregation. Within that architecture, γδT cells accumulated in neuroblast-rich regions, and identical TCR clonotypes exhibited less differentiated phenotypes in immune-rich areas but dysfunction-associated programs at the tumor interface. Spatial context therefore emerges as a major determinant of T cell state in HRNB, nominating tumor-interface γδT cells and niche remodeling as potential therapeutic levers.
 
 ## Repository Structure
 
@@ -72,6 +72,8 @@ See `requirements.txt` for Python package dependencies.
 ### External Tools
 
 **MiXCR** v4.6.0 (https://github.com/milaboratory/mixcr)
+
+**Xenium Explorer** v4.1
 
 **R** v4.4.0
 - immunarch v0.10.3
