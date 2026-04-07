@@ -36,7 +36,8 @@
 # Do not track manuscript master PDF
 manu_figs/xenium_26_figs.pdf
 
-# Ignore macOS metadata
+# Ignore macOS metadata and large files
 .DS_Store
-
+manu_figs/fig3 rdbu tgt.pdf
+manu_figs/fig3 rdbu slides.pdf
 
