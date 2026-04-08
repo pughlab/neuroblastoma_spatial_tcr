@@ -7,31 +7,19 @@ High-risk neuroblastoma (HRNB) is a leading cause of pediatric cancer death. Cur
 
 ```
 neuroblastoma_spatial_tcr/
-├── scripts/
-│   ├── 1.process_and_integrate.ipynb
-│   ├── 2.subcluster_and_visualize_metadata.ipynb
-│   ├── 3.calculate_celltype_proportions_and_neighborhoods.ipynb
-│   ├── 4.correlate_distance_and_genelists.ipynb
-│   ├── 5.find_domains.ipynb
-│   ├── 6.tcr_bulk/
-│   │   ├── 1_run_mixcr_command_example.sh
-│   │   ├── 2_immunarch_tcrs.R
-│   │   └── 3_make_sankey_plot.ipynb
-│   ├── 7.find_tcr_clonotypes.ipynb
-│   └── 8.cci/
-│       ├── 1_AddCellType_toRawObj.py
-│       ├── 2_Run_stlearn_LR_Analysis.slurm
-│       ├── 3_Run_CCI_Analysis.slurm
-│       ├── 4_GetLRSummaryPerSample.py
-│       ├── 5_GetSpecificLRContribution.py
-│       ├── 6_GetHeatmap.py
-│       ├── 7_GetSpatialMap_IndependentColorBar.py
-│       ├── 8_Barplots.py
-│       └── 9_Dotplot_BySingleCell.py
-│
-├── manu_figs/            # manuscript figures
-│
-└── manu_sourcedata/      # source data tables associated with manuscript figures
+├── README.md
+├── requirements.txt
+└── scripts/
+    ├── 1.process_and_integrate.ipynb
+    ├── 2.subcluster_and_visualize_metadata.ipynb
+    ├── 3.calculate_celltype_proportions_and_neighborhoods.ipynb
+    ├── 4.correlate_distance_and_genelists.ipynb
+    ├── 5.find_domains.ipynb
+    ├── 6.tcr_bulk/
+    │   ├── 1_run_mixcr_command_example.sh
+    │   ├── 2_immunarch_tcrs.R
+    │   └── 3_make_sankey_plot.ipynb
+    └── 7.find_tcr_clonotypes.ipynb
 ```
 
 ## Overview of Notebooks and Scripts
@@ -60,9 +48,6 @@ Immunarch and TCR probe visualization.
 
 7. **find_tcr_clonotypes**  
    Clonotype-aware spatial analysis.
-
-8. **cci/**  
-   Cell-cell interaction analysis using stlearn.
 
 ## Software Requirements
 
