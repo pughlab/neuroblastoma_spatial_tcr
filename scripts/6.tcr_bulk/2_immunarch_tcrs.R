@@ -16,8 +16,8 @@ suppressPackageStartupMessages({
 })
 
 # PATHS AND RUN CONFIGURATION ----
-project_dir = "/Users/yyj/Doc/1_dod_dec25"
-input_repdir = "/Users/yyj/Doc/mount/h4h/projects/pediatric/projects/dod/tcr_analysis/20250424/2_clonetracking/analyze_output_copy"
+project_dir = "/path/to/xenium/"
+input_repdir = "/path/to/xenium/mixcr4/analyze_output/"
 outdir_csv = file.path(project_dir, "outdir")
 outdir_plots = file.path(project_dir, "Rplots")
 outdir_logs = file.path(project_dir, "logs")
