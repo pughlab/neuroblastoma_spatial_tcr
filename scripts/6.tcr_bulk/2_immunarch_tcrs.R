@@ -100,8 +100,8 @@ add_metadata_columns = function(meta_df) {
       ),
 
       arm = case_when(
-        grepl("PBBCHF|PAZNRG|886457|907322", Sample) ~ "A",
-        grepl("PBBKFP|PAZWZN|PBADJC|890689|911891|894374", Sample) ~ "B",
+        grepl("Patient2|Patient1", Sample) ~ "A",
+        grepl("Patient5|Patient3|Patient4", Sample) ~ "B",
         TRUE ~ "unknown"
       )
     )
@@ -430,7 +430,7 @@ run_compartment_analysis = function(
 
 run_clonotype_tracking = function(data_list, target_aa, out_csv_name, out_plot_name) {
   tcr_keys = grep("\\.clones_TRG$", names(data_list), value = TRUE)
-  keep_keys = tcr_keys[grepl("CHP.*(PAZWZN|PBBKFP|PAZNRG|PBADJC)", tcr_keys)]
+  keep_keys = tcr_keys[grepl("CHP.*(Patient3|Patient5|Patient1|Patient4)", tcr_keys)]
 
   imm_sub = list(
     data = data_list[keep_keys],
