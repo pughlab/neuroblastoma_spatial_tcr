@@ -23,5 +23,9 @@
 !scripts/6.tcr_bulk/2_immunarch_tcrs.R
 !scripts/6.tcr_bulk/3_make_sankey_plot.ipynb
 
+# Allow manuscript source data
+!manu_sourcedata_deidentified/
+!manu_sourcedata_deidentified/**
+
 # Ignore macOS metadata and large files
 .DS_Store
