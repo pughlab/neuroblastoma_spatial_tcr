@@ -24,8 +24,12 @@
 !scripts/6.tcr_bulk/3_make_sankey_plot.ipynb
 
 # Allow manuscript source data
-!manu_sourcedata_deidentified/
-!manu_sourcedata_deidentified/**
+!manuscript_sourcedata/
+!manuscript_sourcedata/**
+
+# Allow data
+!data/
+!data/**
 
 # Ignore macOS metadata and large files
 .DS_Store

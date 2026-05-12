@@ -1,7 +1,7 @@
 # Spatially resolved T cell receptor tracking links tumor-immune segregation to clonotype-specific T cell states in high-risk neuroblastoma
 
 ## Abstract
-High-risk neuroblastoma (HRNB) is a leading cause of pediatric cancer death. Current therapies center on intensive multimodal treatment with anti-GD2 therapy, with growing interest in harnessing T cell-mediated immunity. However, how T cells and their receptors (T-cell receptors; TCRs) are spatially organized and function within tumors remains poorly defined. To assess whether intratumoral location influences clonotype-specific T cell states, we combined longitudinal bulk TCR sequencing in blood and tumor with spatial transcriptomics and in situ TCR profiling in paired pre- and post-therapy HRNB samples. Across all tumors, spatial compartmentalization is consistently present, with T and B cells segregated from neuroblasts. Despite this segregated architecture, γδT cells preferentially accumulated in neuroblast-rich regions, positioning them as the dominant T cell subset at the tumor interface. Within clonotypes, spatial location was associated with distinct transcriptional states, with immune-rich regions supporting more progenitor-like programs. These findings identify spatial context as a key determinant of phenotype clonotype-specific T cells, and nominate γδT cells as potential therapeutic levers.
+High-risk neuroblastoma (HRNB) is a leading cause of pediatric cancer death. Current therapies center on intensive multimodal treatment including anti-GD2 therapy, with growing interest in harnessing T cell-mediated immunity. How T cells and their receptors (T-cell receptors, TCRs) are spatially organized and function within tumors remains poorly defined. To assess whether intratumoral location influences clonotype-specific T cell states, we profiled TCR repertoires across blood and tumor samples from 37 patients with HRNB using longitudinal bulk TCR sequencing. In a nested subset of 5 patients with paired pre- and post-therapy tumors, we integrated spatial transcriptomics with in situ TCR profiling. Across all tumors, T and B cells preferentially co-localized in immune-rich regions and showed reduced proximity to neuroblast cells. Despite this compartmentalized architecture, γδT cells were more evenly distributed across tumor sections and showed greater proximity to neuroblast-rich regions than other T cell subsets. Within TCR clonotypes, spatial location was associated with distinct transcriptional states, with immune-rich regions supporting more progenitor-like programs. These findings identify spatial context as a key determinant of phenotype clonotype-specific T cell phenotype and highlight γδT cells cells as a spatially distinct population with potential roles in neuroblastoma tumor-immune interactions..
 
 ## Repository Structure
 
@@ -9,7 +9,10 @@ High-risk neuroblastoma (HRNB) is a leading cause of pediatric cancer death. Cur
 neuroblastoma_spatial_tcr/
 ├── README.md
 ├── requirements.txt
-├── manu_souce_d_deidentifiedata/ # manuscript source data
+├── manuscript_sourcedata/ # source data in Excel format
+├── data/
+│   ├── README.md
+│   └── processed/ # source data for figure generation in .csv format
 └── scripts/
     ├── 1.process_and_integrate.ipynb
     ├── 2.subcluster_and_visualize_metadata.ipynb
@@ -65,3 +68,15 @@ See `requirements.txt` for Python package dependencies.
 - immunarch v0.10.3
 - ggplot2 v4.0.0
 - dplyr v1.1.4
+
+## Reproducibility
+
+This repository supports two levels of reproducibility.
+
+1. **Full analysis reproduction from the original `.h5ad` file.**  
+   The `.h5ad` file is not included because it contains controlled-access patient-derived data, but it is available from the authors upon reasonable request.
+
+2. **Figure reproduction from processed CSV files.**  
+   All processed CSV files required to regenerate the manuscript figures are provided in `data/processed/`.
+
+The manuscript source data Excel files are provided in `manuscript_sourcedata/`. These files are intended for journal source-data submission and reader inspection. The canonical code-readable files are the CSV files in `data/processed/`.
