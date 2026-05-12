@@ -1,13 +1,13 @@
 # Ignore everything
 *
 
+# Allow directory traversal
+!*/
+
 # Allow gitignore, README and requirements
 !.gitignore
 !README.md
 !requirements.txt
-
-# Allow scripts directory
-!scripts/
 
 # Allow only selected notebooks
 !scripts/1.process_and_integrate.ipynb
@@ -18,20 +18,17 @@
 !scripts/7.find_tcr_clonotypes.ipynb
 
 # Allow tcr_bulk directory and specific files
-!scripts/6.tcr_bulk/
 !scripts/6.tcr_bulk/1_run_mixcr_command_example.sh
 !scripts/6.tcr_bulk/2_immunarch_tcrs.R
 !scripts/6.tcr_bulk/3_make_sankey_plot.ipynb
 
 # Allow manuscript source data
-!manuscript_sourcedata/
 !manuscript_sourcedata/**
+!manuscript_sourcedata/
 
-# Allow data
-!data/
-!data/**
-!data/processed/
+# Allow processed data
 !data/processed/**
+!data/processed/
 
 # Ignore macOS metadata and large files
 .DS_Store
