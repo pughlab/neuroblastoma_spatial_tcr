@@ -30,6 +30,8 @@
 # Allow data
 !data/
 !data/**
+!data/processed/
+!data/processed/**
 
 # Ignore macOS metadata and large files
 .DS_Store
