@@ -74,9 +74,9 @@ See `requirements.txt` for Python package dependencies.
 This repository supports two levels of reproducibility.
 
 1. **Full analysis reproduction from the original `.h5ad` file.**  
-   The `.h5ad` file is not included because it contains controlled-access patient-derived data, but it is available from the authors upon reasonable request.
+   The `.h5ad` file is not included because it contains controlled-access patient-derived data that will be used in a future manuscript, but it is available from the authors upon reasonable request.
 
 2. **Figure reproduction from processed CSV files.**  
-   All processed CSV files required to regenerate the manuscript figures are provided in `data/processed/`.
+   All processed `.csv` files required to regenerate the manuscript figures are provided in `data/processed/`.
 
-The manuscript source data Excel files are provided in `manuscript_sourcedata/`. These files are intended for journal source-data submission and reader inspection. The canonical code-readable files are the CSV files in `data/processed/`.
+The manuscript source data Excel files are provided in `manuscript_sourcedata/`. These files are intended for journal source-data submission and reader inspection. The canonical code-readable files are the `.csv` files in `data/processed/`.
