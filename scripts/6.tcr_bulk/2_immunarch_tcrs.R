@@ -1,4 +1,12 @@
-# IMMUNARCH TCR ANALYSIS ----
+# Bulk TCR analysis from MiXCR clones output using immunarch.
+#
+# Computes per-sample Hill diversity (Q = 1) for PBMC and tumor compartments
+# across TRA / TRB / TRG chains, tests longitudinal change with a linear mixed
+# model (Value ~ timepoint + (1 | patient)), Holm-adjusts pairwise contrasts,
+# and tracks four T-cell clonotypes across samples with ggalluvial.
+#
+# Per-figure CSVs are written to ../../data/processed/ and the corresponding
+# PDFs to ../../figures/.
 
 suppressPackageStartupMessages({
   library(immunarch)
@@ -15,543 +23,540 @@ suppressPackageStartupMessages({
   library(ggalluvial)
 })
 
-# PATHS AND RUN CONFIGURATION ----
-project_dir = "/path/to/xenium/"
-input_repdir = "/path/to/xenium/mixcr4/analyze_output/"
-outdir_csv = file.path(project_dir, "outdir")
-outdir_plots = file.path(project_dir, "Rplots")
-outdir_logs = file.path(project_dir, "logs")
+# ---- Paths ----------------------------------------------------------------
+# `input_repdir` should point to the MiXCR `clones_TR{A,B,G}.tsv` outputs
+# from Step 6.1; per-sample file names are expected to already use the
+# `PatientN` identifiers. When the directory is absent, the figure-generation
+# half of the script reads the CSVs already in `outdir_csv`.
+input_repdir <- "/path/to/xenium/mixcr4/analyze_output/"
 
-dir.create(outdir_csv, showWarnings = FALSE, recursive = TRUE)
+outdir_csv   <- "../../data/processed"
+outdir_plots <- "../../figures"
+
+dir.create(outdir_csv,   showWarnings = FALSE, recursive = TRUE)
 dir.create(outdir_plots, showWarnings = FALSE, recursive = TRUE)
-dir.create(outdir_logs, showWarnings = FALSE, recursive = TRUE)
 
-# HELPERS ----
-theme_pub = function() {
+run_compute_stage <- dir.exists(input_repdir)
+
+# ---- Plot theme -----------------------------------------------------------
+theme_pub <- function() {
   theme_classic() +
     theme(
       panel.grid.major = element_blank(),
       panel.grid.minor = element_blank(),
-      legend.position = "none",
-      axis.text = element_text(size = 6),
+      legend.position  = "none",
+      axis.text  = element_text(size = 6),
       axis.title = element_text(size = 6),
       plot.title = element_text(size = 6),
       axis.line.x = element_line(linewidth = 0.5),
       axis.line.y = element_line(linewidth = 0.5),
-      axis.ticks = element_line(linewidth = 0.5)
+      axis.ticks  = element_line(linewidth = 0.5)
     )
 }
 
-add_metadata_columns = function(meta_df) {
+# ---- Sample metadata ------------------------------------------------------
+# Parses patient ID, TCR chain, treatment timepoint, project, sample type
+# (tumor / PBMC / cfDNA) and treatment arm from the MiXCR sample name.
+add_metadata_columns <- function(meta_df) {
   meta_df %>%
     mutate(
       patient = str_extract(Sample, "(?:ANBL|PRO)-[A-Z]+-([A-Za-z0-9]+)") %>%
         str_replace(".*-([A-Za-z0-9]+)$", "\\1"),
-
       chain = case_when(
-        grepl("TRB", Sample) ~ "TRB",
+        grepl("TRB",  Sample) ~ "TRB",
         grepl("TRAD", Sample) ~ "TRAD",
-        grepl("TRA", Sample) ~ "TRA",
-        grepl("TRG", Sample) ~ "TRG",
-        grepl("TRD", Sample) ~ "TRD"
+        grepl("TRA",  Sample) ~ "TRA",
+        grepl("TRG",  Sample) ~ "TRG",
+        grepl("TRD",  Sample) ~ "TRD",
+        TRUE ~ NA_character_
       ),
-
       timepoint = case_when(
-        grepl("-T0-", Sample) ~ "pTx",
+        grepl("-T0-",  Sample) ~ "pTx",
         grepl("-pTx-", Sample) ~ "pTx",
-        grepl("-T1-", Sample) ~ "pI4",
-        grepl("-T2-", Sample) ~ "ePC",
-        grepl("-T3-", Sample) ~ "pI3",
-        grepl("-T4-", Sample) ~ "pSu",
-        grepl("-T5-", Sample) ~ "Pgn",
-        grepl("-T6-", Sample) ~ "Rel",
-        grepl("-T7-", Sample) ~ "EOI",
-        grepl("-T8-", Sample) ~ "pI2",
-        grepl("-T9-", Sample) ~ "M72",
-        grepl("-DX-", Sample) ~ "tDX",
-        grepl("-PT-", Sample) ~ "tPT",
-        grepl("-Ch1-", Sample) ~ "Ch1",
-        grepl("-Ch2-", Sample) ~ "Ch2",
-        grepl("-Ch3-", Sample) ~ "Ch3",
-        grepl("-SC1-", Sample) ~ "SC1",
-        grepl("-SC2-", Sample) ~ "SC2",
-        grepl("-SC3-", Sample) ~ "SC3",
-        grepl("-CT1-", Sample) ~ "CT1",
-        grepl("-CT2-", Sample) ~ "CT2",
-        grepl("-CT3-", Sample) ~ "CT3",
-        grepl("-PT1-", Sample) ~ "PT1",
-        grepl("-PT2-", Sample) ~ "PT2",
+        grepl("-T1-",  Sample) ~ "pI4",
+        grepl("-T2-",  Sample) ~ "ePC",
+        grepl("-T3-",  Sample) ~ "pI3",
+        grepl("-T4-",  Sample) ~ "pSu",
+        grepl("-T5-",  Sample) ~ "Pgn",
+        grepl("-T6-",  Sample) ~ "Rel",
+        grepl("-T7-",  Sample) ~ "EOI",
+        grepl("-T8-",  Sample) ~ "pI2",
+        grepl("-T9-",  Sample) ~ "M72",
+        grepl("-DX-",  Sample) ~ "tDX",
+        grepl("-PT-",  Sample) ~ "tPT",
         TRUE ~ "NA"
       ),
-
       project = case_when(
         grepl("^ANBL", Sample) ~ "ANBL",
-        grepl("^PRO", Sample) ~ "PRO",
+        grepl("^PRO",  Sample) ~ "PRO",
         TRUE ~ "unknown"
       ),
-
+      # Compartment is encoded by the DNA-source token (-R- tumor,
+      # -P- cfDNA plasma, -M- PBMC mononuclear).
       sampletype = case_when(
-        project == "PRO" ~ "PBMC",
-        grepl("^ANBL-CHP-[A-Z]{6}", Sample) ~ "tumor",
-        grepl("^ANBL-SM-[A-Z]{6}", Sample) ~ "cfDNA",
-        grepl("^ANBL-CHP-[0-9]{6}", Sample) ~ "PBMC",
-        grepl("^ANBL-SM-[0-9]{6}", Sample) ~ "PBMC",
-        TRUE ~ "unknown"
+        project == "PRO"           ~ "PBMC",
+        grepl("-R-DNA", Sample)    ~ "tumor",
+        grepl("-P-DNA", Sample)    ~ "cfDNA",
+        grepl("-M-DNA", Sample)    ~ "PBMC",
+        TRUE                        ~ "unknown"
       ),
-
       arm = case_when(
-        grepl("Patient2|Patient1", Sample) ~ "A",
-        grepl("Patient5|Patient3|Patient4", Sample) ~ "B",
-        TRUE ~ "unknown"
+        patient %in% c("Patient1", "Patient2")             ~ "A",
+        patient %in% c("Patient3", "Patient4", "Patient5") ~ "B",
+        TRUE                                                ~ "unknown"
       )
     )
 }
 
-get_filtered_inputs = function(meta_df, data_list, sampletype_keep, chain_keep, time_levels) {
-  filtered_meta = meta_df %>%
-    filter(timepoint %in% time_levels) %>%
-    filter(sampletype == sampletype_keep) %>%
-    filter(chain == chain_keep) %>%
+# ---------------------------------------------------------------------------
+# Repertoire diversity (Extended Data Fig 1a-f)
+# ---------------------------------------------------------------------------
+
+# Hill diversity (Q = 1) within one (compartment, chain) panel. Fits
+# Value ~ timepoint + (1 | patient) and writes the per-sample diversity
+# values and Holm-adjusted pairwise contrasts to two CSVs.
+compute_diversity_csv <- function(data_list, meta_df, sampletype_keep, chain_keep,
+                                  time_levels, data_csv, stats_csv) {
+  filtered_meta <- meta_df %>%
+    dplyr::filter(timepoint %in% time_levels,
+                  sampletype == sampletype_keep,
+                  chain == chain_keep) %>%
     mutate(timepoint = factor(timepoint, levels = time_levels))
-
-  filtered_data = data_list[filtered_meta$Sample]
-
-  list(meta = filtered_meta, data = filtered_data)
-}
-
-make_emm_labels = function(model_obj, comparisons_list, adjust_method = "holm") {
-  emm = emmeans(model_obj, ~ timepoint)
-  pairs_df = as.data.frame(pairs(emm, adjust = adjust_method))
-
-  pairs_df$comp_key = vapply(
-    strsplit(as.character(pairs_df$contrast), " - ", fixed = TRUE),
-    function(x) paste(sort(x), collapse = " - "),
-    character(1)
-  )
-
-  comparison_keys = vapply(
-    comparisons_list,
-    function(x) paste(sort(x), collapse = " - "),
-    character(1)
-  )
-
-  pvals_ordered = pairs_df$p.value[match(comparison_keys, pairs_df$comp_key)]
-  p_labels = paste0("adj p=", format.pval(pvals_ordered, digits = 2, eps = 1e-3))
-
-  list(pairs_df = pairs_df, p_labels = p_labels)
-}
-
-fit_lmm = function(df, y_var) {
-  formula_obj = as.formula(paste0(y_var, " ~ timepoint + (1 | patient)"))
-  lmer(formula_obj, data = df)
-}
-
-make_metric_plot = function(plot_data, y_var, title_text, y_label, colors, y_lim = c(0, NA), with_boxplot = TRUE) {
-  p = ggplot(plot_data, aes(x = timepoint, y = .data[[y_var]])) +
-    geom_line(aes(group = patient), alpha = 0.3, color = "gray50", linewidth = 0.2)
-
-  if (with_boxplot) {
-    p = p + geom_boxplot(aes(fill = timepoint), alpha = 0.7, outlier.shape = NA, width = 0.5, linewidth = 0.2)
+  filtered_data <- data_list[filtered_meta$Sample]
+  if (length(filtered_data) == 0) {
+    message(sprintf("No %s/%s samples -- skipping %s.",
+                    sampletype_keep, chain_keep, data_csv))
+    return(invisible(NULL))
   }
 
-  p = p +
-    geom_jitter(aes(color = timepoint), width = 0.15, height = 0, size = 0.4, alpha = 0.9) +
+  div_hill <- repDiversity(filtered_data, "hill")
+  plot_data_div <- div_hill %>%
+    as.data.frame() %>%
+    left_join(filtered_meta %>% dplyr::select(Sample, patient, timepoint),
+              by = "Sample") %>%
+    dplyr::filter(Q == 1)
+
+  write.csv(plot_data_div, file.path(outdir_csv, data_csv), row.names = FALSE)
+
+  if (length(unique(plot_data_div$patient)) >= 2 &&
+      nrow(plot_data_div) >= length(time_levels) + 2) {
+    model_div    <- lmer(Value ~ timepoint + (1 | patient), data = plot_data_div)
+    emm_div      <- emmeans(model_div, ~ timepoint)
+    pairs_result <- as.data.frame(pairs(emm_div, adjust = "holm"))
+    pairs_result$comp_key <- vapply(
+      strsplit(as.character(pairs_result$contrast), " - ", fixed = TRUE),
+      function(x) paste(sort(x), collapse = " - "),
+      character(1)
+    )
+    write.csv(pairs_result, file.path(outdir_csv, stats_csv), row.names = FALSE)
+  } else {
+    message(sprintf("Not enough samples to fit LMM for %s -- skipping %s.",
+                    data_csv, stats_csv))
+  }
+  invisible(plot_data_div)
+}
+
+# Renders the diversity panel from the CSVs written by `compute_diversity_csv`.
+plot_diversity_from_csv <- function(data_csv, stats_csv, time_levels, colors,
+                                    title_text, y_label = "Hill Q=1 diversity",
+                                    with_boxplot = TRUE,
+                                    width_cm = 6, height_cm = 4.2,
+                                    out_pdf) {
+  data_path  <- file.path(outdir_csv, data_csv)
+  stats_path <- file.path(outdir_csv, stats_csv)
+  if (!file.exists(data_path)) {
+    warning("Missing ", data_path, " -- skipping ", out_pdf)
+    return(invisible(NULL))
+  }
+  plot_data_div <- read.csv(data_path, check.names = FALSE) %>%
+    mutate(timepoint = factor(timepoint, levels = time_levels))
+
+  p <- ggplot(plot_data_div, aes(x = timepoint, y = Value)) +
+    geom_line(aes(group = patient), alpha = 0.3, color = "gray50",
+              linewidth = 0.2)
+  if (with_boxplot) {
+    p <- p + geom_boxplot(aes(fill = timepoint),
+                          alpha = 0.7, outlier.shape = NA,
+                          width = 0.5, linewidth = 0.2)
+  }
+  p <- p +
+    geom_jitter(aes(color = timepoint),
+                width = 0.15, height = 0, size = 0.4, alpha = 0.9) +
     scale_fill_manual(values = colors) +
     scale_color_manual(values = colors) +
-    coord_cartesian(ylim = y_lim) +
+    coord_cartesian(ylim = c(0, NA)) +
     labs(x = "Timepoint", y = y_label, title = title_text) +
     theme_pub()
 
-  p
-}
+  if (file.exists(stats_path)) {
+    stats_df    <- read.csv(stats_path, check.names = FALSE)
+    comparisons <- combn(time_levels, 2, simplify = FALSE)
+    comp_keys   <- vapply(comparisons,
+                          function(x) paste(sort(x), collapse = " - "),
+                          character(1))
+    pvals       <- stats_df$p.value[match(comp_keys, stats_df$comp_key)]
+    p_labels    <- paste0("adj p=", format.pval(pvals, digits = 2, eps = 1e-3))
 
-classify_clones = function(data_list, meta_df, thresholds = c(Small = 0.0001, Medium = 0.001, Large = 0.01, Hyperexpanded = 1)) {
-  clone_classifications = list()
-
-  for (sample_name in names(data_list)) {
-    sample_data = data_list[[sample_name]]
-    total_reads = sum(sample_data$Clones)
-
-    sample_data = sample_data %>%
-      mutate(
-        Proportion = Clones / total_reads,
-        Sample = sample_name,
-        Clone_Type = case_when(
-          Proportion >= thresholds["Large"] ~ "Hyperexpanded",
-          Proportion >= thresholds["Medium"] ~ "Large",
-          Proportion >= thresholds["Small"] ~ "Medium",
-          TRUE ~ "Small"
-        )
-      )
-
-    clone_classifications[[sample_name]] = sample_data
-  }
-
-  all_clones = bind_rows(clone_classifications) %>%
-    left_join(meta_df %>% select(Sample, timepoint), by = "Sample") %>%
-    mutate(Clone_Type = factor(Clone_Type, levels = c("Small", "Medium", "Large", "Hyperexpanded")))
-
-  all_clones
-}
-
-summarize_clone_classes = function(clone_class_df) {
-  clone_summary = clone_class_df %>%
-    group_by(Sample, timepoint, Clone_Type) %>%
-    summarise(
-      n_clones = n(),
-      total_reads = sum(Clones),
-      mean_proportion = mean(Proportion),
-      .groups = "drop"
-    ) %>%
-    arrange(timepoint, Sample, Clone_Type)
-
-  timepoint_summary = clone_class_df %>%
-    group_by(timepoint, Clone_Type) %>%
-    summarise(
-      n_clones = n(),
-      n_samples = n_distinct(Sample),
-      mean_proportion = mean(Proportion),
-      sd_proportion = sd(Proportion),
-      .groups = "drop"
-    ) %>%
-    arrange(timepoint, Clone_Type)
-
-  list(clone_summary = clone_summary, timepoint_summary = timepoint_summary)
-}
-
-make_clonality_plot = function(filtered_data, filtered_meta, time_levels, colors) {
-  imm_hom = repClonality(
-    filtered_data,
-    .method = "homeo",
-    .clone.types = c(Small = 0.0001, Medium = 0.001, Large = 0.01, Hyperexpanded = 1)
-  )
-
-  plot_data_hom = imm_hom %>%
-    as.data.frame() %>%
-    rownames_to_column("Sample") %>%
-    pivot_longer(cols = -Sample, names_to = "Clone_Type", values_to = "Proportion") %>%
-    left_join(filtered_meta %>% select(Sample, timepoint), by = "Sample") %>%
-    mutate(
-      timepoint = factor(timepoint, levels = time_levels),
-      Clone_Type = case_when(
-        grepl("Small", Clone_Type) ~ "Small",
-        grepl("Medium", Clone_Type) ~ "Medium",
-        grepl("Large", Clone_Type) ~ "Large",
-        grepl("Hyperexpanded", Clone_Type) ~ "Hyperexpanded",
-        TRUE ~ Clone_Type
-      ),
-      Clone_Type = factor(Clone_Type, levels = c("Small", "Medium", "Large", "Hyperexpanded"))
-    )
-
-  plot_data_hom_summary = plot_data_hom %>%
-    group_by(timepoint, Clone_Type) %>%
-    summarise(
-      Mean_Proportion = mean(Proportion),
-      SE = sd(Proportion) / sqrt(n()),
-      .groups = "drop"
-    ) %>%
-    group_by(timepoint) %>%
-    arrange(desc(Clone_Type)) %>%
-    mutate(
-      y_start = cumsum(lag(Mean_Proportion, default = 0)),
-      y_end = cumsum(Mean_Proportion),
-      y_pos = (y_start + y_end) / 2,
-      label = ifelse(Mean_Proportion >= 0.1, paste0(round(Mean_Proportion, 3)), "")
-    ) %>%
-    ungroup()
-
-  p_hom = ggplot(plot_data_hom_summary, aes(x = timepoint, y = Mean_Proportion, fill = Clone_Type)) +
-    geom_bar(stat = "identity", position = "stack", alpha = 0.8) +
-    geom_text(aes(y = y_pos, label = label), position = position_identity(), size = 1.8, color = "white") +
-    scale_fill_manual(values = rev(colors)) +
-    coord_cartesian(ylim = c(0, 1)) +
-    labs(x = "Timepoint", y = "Mean Proportion", title = "Clonal Homeostasis", fill = "Clone Type") +
-    theme_pub()
-
-  list(plot = p_hom, summary_df = plot_data_hom_summary)
-}
-
-run_compartment_analysis = function(
-  compartment_label,
-  sampletype_keep,
-  time_levels,
-  data_list,
-  meta_df,
-  colors,
-  volume_ylim,
-  diversity_ylim,
-  with_boxplot_volume,
-  with_boxplot_diversity,
-  plot_width_cm,
-  plot_height_cm,
-  file_tag
-) {
-  inputs = get_filtered_inputs(
-    meta_df = meta_df,
-    data_list = data_list,
-    sampletype_keep = sampletype_keep,
-    chain_keep = "TRB",
-    time_levels = time_levels
-  )
-
-  filtered_meta = inputs$meta
-  filtered_data = inputs$data
-
-  # VOLUME ----
-  exp_vol = repExplore(filtered_data, .method = "volume")
-  plot_data_vol = exp_vol %>%
-    as.data.frame() %>%
-    left_join(filtered_meta %>% select(Sample, patient, timepoint), by = "Sample")
-
-  write.csv(plot_data_vol, file.path(outdir_csv, paste0(file_tag, "_volume_plot_data.csv")), row.names = FALSE)
-
-  p_vol = make_metric_plot(
-    plot_data = plot_data_vol,
-    y_var = "Volume",
-    title_text = paste0(compartment_label, " Repertoire Volume"),
-    y_label = "Volume",
-    colors = colors,
-    y_lim = volume_ylim,
-    with_boxplot = with_boxplot_volume
-  )
-
-  model_vol = fit_lmm(plot_data_vol, "Volume")
-  capture.output(summary(model_vol), file = file.path(outdir_logs, paste0(file_tag, "_volume_model_summary.txt")))
-  capture.output(anova(model_vol), file = file.path(outdir_logs, paste0(file_tag, "_volume_model_anova.txt")))
-
-  comparisons = combn(time_levels, 2, simplify = FALSE)
-  vol_stats = make_emm_labels(model_vol, comparisons, adjust_method = "holm")
-
-  write.csv(vol_stats$pairs_df, file.path(outdir_csv, paste0(file_tag, "_volume_statistical_results.csv")), row.names = FALSE)
-
-  if (length(time_levels) == 2) {
-    y_positions = c(volume_ylim[2] * 0.9)
-  } else {
-    y_positions = seq(volume_ylim[2] * 0.5, volume_ylim[2] * 0.92, length.out = length(comparisons))
-  }
-
-  p_vol_stats = p_vol +
-    geom_signif(
+    ymax_div <- max(plot_data_div$Value, na.rm = TRUE)
+    y_pos <- if (length(time_levels) == 2) {
+      ymax_div * 0.90
+    } else {
+      # Stagger the six pairwise comparison bars across two y-tiers.
+      c(ymax_div * 0.75, ymax_div * 0.83, ymax_div * 0.92,
+        ymax_div * 0.50, ymax_div * 0.58, ymax_div * 0.67)
+    }
+    p <- p + geom_signif(
       comparisons = comparisons,
-      annotations = vol_stats$p_labels,
-      y_position = y_positions,
-      tip_length = 0,
-      textsize = 1.8,
-      size = 0.3
+      annotations = p_labels,
+      y_position  = y_pos,
+      tip_length  = 0,
+      textsize    = 1.8,
+      size        = 0.3
     )
-
-  ggsave(
-    filename = file.path(outdir_plots, paste0(file_tag, "_volume.pdf")),
-    plot = p_vol_stats,
-    width = plot_width_cm,
-    height = plot_height_cm,
-    units = "cm"
-  )
-
-  # CLONALITY ----
-  clonality = make_clonality_plot(filtered_data, filtered_meta, time_levels, colors)
-  ggsave(
-    filename = file.path(outdir_plots, paste0(file_tag, "_clonal_homeostasis.pdf")),
-    plot = clonality$plot,
-    width = ifelse(length(time_levels) > 2, 3.6, 2.5),
-    height = 4.2,
-    units = "cm"
-  )
-
-  clone_classification_results = classify_clones(filtered_data, filtered_meta)
-  clone_summ = summarize_clone_classes(clone_classification_results)
-
-  write.csv(
-    clone_summ$timepoint_summary,
-    file.path(outdir_csv, paste0(file_tag, "_clone_classification_results.csv")),
-    row.names = FALSE
-  )
-
-  # DIVERSITY ----
-  div_hill = repDiversity(filtered_data, "hill")
-  plot_data_div = div_hill %>%
-    as.data.frame() %>%
-    left_join(filtered_meta %>% select(Sample, patient, timepoint), by = "Sample") %>%
-    filter(Q == 1)
-
-  write.csv(plot_data_div, file.path(outdir_csv, paste0(file_tag, "_div_plot_data.csv")), row.names = FALSE)
-
-  p_div = make_metric_plot(
-    plot_data = plot_data_div,
-    y_var = "Value",
-    title_text = paste0(compartment_label, " Shannon Diversity"),
-    y_label = "Shannon diversity",
-    colors = colors,
-    y_lim = diversity_ylim,
-    with_boxplot = with_boxplot_diversity
-  )
-
-  model_div = fit_lmm(plot_data_div, "Value")
-  capture.output(summary(model_div), file = file.path(outdir_logs, paste0(file_tag, "_diversity_model_summary.txt")))
-  capture.output(anova(model_div), file = file.path(outdir_logs, paste0(file_tag, "_diversity_model_anova.txt")))
-
-  div_stats = make_emm_labels(model_div, comparisons, adjust_method = "holm")
-  write.csv(div_stats$pairs_df, file.path(outdir_csv, paste0(file_tag, "_div_statistical_results.csv")), row.names = FALSE)
-
-  ymax_div = max(plot_data_div$Value, na.rm = TRUE)
-  if (length(time_levels) == 2) {
-    y_positions_div = c(ymax_div * 0.9)
-  } else {
-    y_positions_div = seq(ymax_div * 0.5, ymax_div * 0.92, length.out = length(comparisons))
   }
 
-  p_div_stats = p_div +
-    geom_signif(
-      comparisons = comparisons,
-      annotations = div_stats$p_labels,
-      y_position = y_positions_div,
-      tip_length = 0,
-      textsize = 1.8,
-      size = 0.3
-    )
-
-  ggsave(
-    filename = file.path(outdir_plots, paste0(file_tag, "_diversity.pdf")),
-    plot = p_div_stats,
-    width = plot_width_cm,
-    height = plot_height_cm,
-    units = "cm"
-  )
-
-  invisible(
-    list(
-      filtered_meta = filtered_meta,
-      filtered_data = filtered_data,
-      volume_data = plot_data_vol,
-      diversity_data = plot_data_div
-    )
-  )
+  ggsave(file.path(outdir_plots, out_pdf), p,
+         width = width_cm, height = height_cm, units = "cm")
+  invisible(p)
 }
 
-run_clonotype_tracking = function(data_list, target_aa, out_csv_name, out_plot_name) {
-  tcr_keys = grep("\\.clones_TRG$", names(data_list), value = TRUE)
-  keep_keys = tcr_keys[grepl("CHP.*(Patient3|Patient5|Patient1|Patient4)", tcr_keys)]
+# ---------------------------------------------------------------------------
+# Tumor DX -> PT arm contingency (Extended Data Fig 1d,e,f panel)
+# ---------------------------------------------------------------------------
 
-  imm_sub = list(
-    data = data_list[keep_keys],
-    meta = NULL
-  )
+# For each chain, tabulates whether each patient's TRA / TRB / TRG diversity
+# rises or falls from DX to PT, split by treatment arm, and computes a 2 x 2
+# Fisher's exact test.
+compute_arm_contingency_csv <- function(tumor_csv_map) {
+  rows <- list()
+  for (chain_keep in names(tumor_csv_map)) {
+    info      <- tumor_csv_map[[chain_keep]]
+    data_path <- file.path(outdir_csv, info$data)
+    if (!file.exists(data_path)) next
 
-  names(imm_sub$data) = sub("\\.clones_TRG$", "", names(imm_sub$data))
+    df <- read.csv(data_path, check.names = FALSE) %>%
+      mutate(arm = case_when(
+        patient %in% c("Patient1", "Patient2")             ~ "A",
+        patient %in% c("Patient3", "Patient4", "Patient5") ~ "B",
+        TRUE                                                ~ "unknown"
+      )) %>%
+      pivot_wider(id_cols = c(patient, arm),
+                  names_from = timepoint, values_from = Value) %>%
+      dplyr::filter(!is.na(tDX) & !is.na(tPT)) %>%
+      mutate(direction = ifelse(tPT > tDX, "increase", "decrease"))
 
-  tc = trackClonotypes(
-    imm_sub$data,
-    target_aa,
-    .col = "aa"
-  )
+    counts    <- table(df$arm, df$direction)
+    arm_a_inc <- if ("A" %in% rownames(counts) && "increase" %in% colnames(counts)) counts["A","increase"] else 0
+    arm_a_dec <- if ("A" %in% rownames(counts) && "decrease" %in% colnames(counts)) counts["A","decrease"] else 0
+    arm_b_inc <- if ("B" %in% rownames(counts) && "increase" %in% colnames(counts)) counts["B","increase"] else 0
+    arm_b_dec <- if ("B" %in% rownames(counts) && "decrease" %in% colnames(counts)) counts["B","decrease"] else 0
+    mat <- matrix(c(arm_a_inc, arm_a_dec, arm_b_inc, arm_b_dec),
+                  nrow = 2, byrow = TRUE,
+                  dimnames = list(c("A","B"), c("increase","decrease")))
+    fisher_p <- tryCatch(fisher.test(mat)$p.value,
+                         error = function(e) NA_real_)
 
-  write.csv(tc, file.path(outdir_csv, out_csv_name), row.names = FALSE)
+    rows[[chain_keep]] <- data.frame(
+      Chain            = info$chain_display,
+      `Arm A increase` = arm_a_inc,
+      `Arm A decrease` = arm_a_dec,
+      `Arm B increase` = arm_b_inc,
+      `Arm B decrease` = arm_b_dec,
+      `Fisher's P`     = fisher_p,
+      check.names      = FALSE
+    )
+  }
+  out <- do.call(rbind, rows)
+  write.csv(out, file.path(outdir_csv, "ext_fig1_arm_contingency.csv"),
+            row.names = FALSE)
+  invisible(out)
+}
 
-  p = vis(tc)
+# ---------------------------------------------------------------------------
+# Clonotype tracking (Fig 5b/c/f/g)
+# ---------------------------------------------------------------------------
 
-  lab_df = bind_rows(lapply(names(imm_sub$data), function(s) {
-    df = imm_sub$data[[s]]
-    hit = df[df$CDR3.aa == target_aa, , drop = FALSE]
+# Tracks one target CDR3 amino-acid sequence across the samples matching
+# `sample_filter_regex`, then writes a wide proportion table and a long-form
+# table of per-sample clone counts and proportions used for stratum labels.
+compute_clonotype_tracking_csv <- function(data_list, sample_filter_regex,
+                                           chain_keep, target_aa,
+                                           out_csv, out_counts_csv) {
+  chain_pat <- paste0("\\.clones_", chain_keep, "$")
+  keys <- grep(chain_pat, names(data_list), value = TRUE)
+  keys <- keys[grepl(sample_filter_regex, keys)]
+  if (length(keys) == 0) {
+    warning("No samples match ", sample_filter_regex, " on ", chain_keep)
+    return(invisible(NULL))
+  }
+  sub_data <- data_list[keys]
+  names(sub_data) <- sub(chain_pat, "", names(sub_data))
+
+  tc <- trackClonotypes(sub_data, target_aa, .col = "aa")
+  write.csv(tc, file.path(outdir_csv, out_csv), row.names = FALSE)
+
+  counts_df <- bind_rows(lapply(names(sub_data), function(s) {
+    df  <- sub_data[[s]]
+    hit <- df[df$CDR3.aa == target_aa, , drop = FALSE]
     if (nrow(hit) == 0) {
-      return(data.frame(Sample = s, lab = "", stringsAsFactors = FALSE))
+      return(data.frame(Sample = s, Clones = 0L, Proportion = 0))
     }
     data.frame(
-      Sample = s,
-      lab = sprintf("%d\n(%.2f)", as.integer(hit$Clones[1]), as.numeric(hit$Proportion[1])),
-      stringsAsFactors = FALSE
+      Sample     = s,
+      Clones     = as.integer(hit$Clones[1]),
+      Proportion = as.numeric(hit$Proportion[1])
     )
   }))
+  write.csv(counts_df, file.path(outdir_csv, out_counts_csv), row.names = FALSE)
+  invisible(tc)
+}
 
-  p_alluv = p
-  p_alluv$data = as.data.frame(p_alluv$data, check.names = FALSE) %>%
-    left_join(lab_df, by = "Sample")
-
-  # ALLUVIAL CUSTOMIZATION ----
-  p_alluv = p_alluv +
-    scale_fill_manual(values = setNames("#d7b5d8", target_aa)) +
-    labs(x = "Timepoint", y = "Mean Proportion", title = "Clonotype tracking") +
+# Renders the alluvial tracking plot for one target clonotype. The y-axis is
+# clipped to `y_max` because the tracked proportions are small relative to the
+# overall repertoire, and each stratum is annotated with the per-sample clone
+# count and percentage.
+plot_clonotype_tracking_from_csv <- function(out_csv, out_counts_csv, target_aa,
+                                             fill_color = "#d7b5d8",
+                                             y_max      = NA_real_,
+                                             width_cm, height_cm, out_pdf) {
+  csv_path    <- file.path(outdir_csv, out_csv)
+  counts_path <- file.path(outdir_csv, out_counts_csv)
+  if (!file.exists(csv_path)) {
+    warning("Missing ", csv_path, " -- skipping ", out_pdf)
+    return(invisible(NULL))
+  }
+  
+  tc          <- read.csv(csv_path, check.names = FALSE)
+  sample_cols <- setdiff(colnames(tc), "CDR3.aa")
+  
+  long_tc <- tc %>%
+    tidyr::pivot_longer(cols = all_of(sample_cols),
+                        names_to = "Sample", values_to = "Proportion") %>%
+    mutate(Sample    = factor(Sample, levels = sample_cols),
+           Clonotype = factor(CDR3.aa, levels = target_aa)) %>%
+    dplyr::select(Sample, Clonotype, Proportion)
+  
+  # Per-sample "<clones>\n(<percentage>%)" labels for each alluvial stratum.
+  if (file.exists(counts_path)) {
+    counts_df <- read.csv(counts_path, check.names = FALSE)
+    lab_df <- counts_df %>%
+      mutate(lab = ifelse(Proportion > 0,
+                          sprintf("%d\n(%.2f%%)",
+                                  as.integer(Clones),
+                                  100 * as.numeric(Proportion)),
+                          ""))
+  } else {
+    lab_df <- long_tc %>%
+      mutate(lab = ifelse(Proportion > 0,
+                          sprintf("%.2f%%", 100 * Proportion),
+                          ""))
+  }
+  lab_df$Sample    <- factor(lab_df$Sample, levels = sample_cols)
+  lab_df$Clonotype <- factor(target_aa, levels = target_aa)
+  
+  df_plot <- long_tc %>%
+    left_join(lab_df %>% dplyr::select(Sample, Clonotype, lab),
+              by = c("Sample", "Clonotype")) %>%
+    mutate(lab = ifelse(is.na(lab), "", lab))
+  
+  df_plot <- df_plot %>%
+    mutate(Proportion = ifelse(Proportion <= 0, 1e-10, Proportion))
+  
+  p_alluv <- ggplot(df_plot,
+                    aes(x = Sample, y = Proportion,
+                        alluvium = Clonotype, stratum = Clonotype,
+                        fill = Clonotype)) +
+    ggalluvial::geom_alluvium(alpha = 0.6) +
+    ggalluvial::geom_stratum(alpha = 1, color = "white", linewidth = 0) +
+    geom_text(stat = "stratum",
+              aes(label = lab),
+              color = "#000000", size = 1.8) +
+    scale_fill_manual(values = setNames(fill_color, target_aa)) +
+    labs(x = "Sample", y = "Proportion",
+         title = paste("Clonotype tracking:", target_aa)) +
     theme_classic() +
     theme(
       panel.grid.major = element_blank(),
       panel.grid.minor = element_blank(),
-      axis.text = element_text(size = 6),
+      axis.text   = element_text(size = 6),
       axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1, size = 6),
-      axis.title = element_text(size = 6),
-      plot.title = element_text(size = 6),
+      axis.title  = element_text(size = 6),
+      plot.title  = element_text(size = 6),
       legend.position = "none"
-    ) +
-    geom_text(
-      stat = "stratum",
-      aes(label = lab),
-      color = "#000000",
-      size = 1.8
     )
-
-  p_alluv$layers[[1]]$aes_params$alpha = 0.6
-  p_alluv$layers[[2]]$aes_params$alpha = 1
-  p_alluv$layers[[2]]$aes_params$color = "white"
-  p_alluv$layers[[2]]$aes_params$linewidth = 0
-
-  ggsave(
-    filename = file.path(outdir_plots, out_plot_name),
-    plot = p_alluv,
-    width = 11,
-    height = 10,
-    units = "cm"
-  )
-
-  invisible(tc)
+  
+  if (!is.na(y_max)) {
+    p_alluv <- p_alluv + coord_cartesian(ylim = c(0, y_max))
+  }
+  
+  ggsave(file.path(outdir_plots, out_pdf), p_alluv,
+         width = width_cm, height = height_cm, units = "cm")
+  invisible(p_alluv)
 }
 
-# MAIN WORKFLOW ----
-anbl_repdata = repLoad(input_repdir)
+# ---------------------------------------------------------------------------
+# Per-figure configuration
+# ---------------------------------------------------------------------------
+PBMC_TIMEPOINTS  <- c("pTx", "pI4", "pSu", "ePC")
+TUMOR_TIMEPOINTS <- c("tDX", "tPT")
+batlow_colors_4  <- c("#d7b5d8", "#df65b0", "#dd1c77", "#980043")
+tumor_colors_2   <- c("#c994c7", "#dd1c77")
 
-samples = names(anbl_repdata$data)
-data = anbl_repdata$data[samples]
-meta = anbl_repdata$meta[anbl_repdata$meta$Sample %in% samples, ]
-meta = add_metadata_columns(meta)
-
-batlow_colors_4 = c("#d7b5d8", "#df65b0", "#dd1c77", "#980043")
-tumor_colors_2 = c("#c994c7", "#dd1c77")
-
-# PBMC ANALYSES ----
-pbmc_results = run_compartment_analysis(
-  compartment_label = "PBMC",
-  sampletype_keep = "PBMC",
-  time_levels = c("pTx", "pI4", "pSu", "ePC"),
-  data_list = data,
-  meta_df = meta,
-  colors = batlow_colors_4,
-  volume_ylim = c(0, 1800),
-  diversity_ylim = c(0, NA),
-  with_boxplot_volume = TRUE,
-  with_boxplot_diversity = TRUE,
-  plot_width_cm = 6,
-  plot_height_cm = 4.2,
-  file_tag = "fig5_pbmc"
+pbmc_csv_map <- list(
+  TRA = list(data = "ext_fig1a_data.csv", stats = "ext_fig1a_stats.csv",
+             pdf  = "ext_fig1a.pdf"),
+  TRB = list(data = "ext_fig1b_data.csv", stats = "ext_fig1b_stats.csv",
+             pdf  = "ext_fig1b.pdf"),
+  TRG = list(data = "ext_fig1c_data.csv", stats = "ext_fig1c_stats.csv",
+             pdf  = "ext_fig1c.pdf")
 )
 
-# TUMOR ANALYSES ----
-tumor_results = run_compartment_analysis(
-  compartment_label = "Tumor",
-  sampletype_keep = "tumor",
-  time_levels = c("tDX", "tPT"),
-  data_list = data,
-  meta_df = meta,
-  colors = tumor_colors_2,
-  volume_ylim = c(0, 1100),
-  diversity_ylim = c(0, NA),
-  with_boxplot_volume = FALSE,
-  with_boxplot_diversity = FALSE,
-  plot_width_cm = 4,
-  plot_height_cm = 4.2,
-  file_tag = "fig5_tumor"
+tumor_csv_map <- list(
+  TRA = list(data = "ext_fig1d_data.csv", stats = "ext_fig1d_stats.csv",
+             pdf  = "ext_fig1d.pdf", chain_display = "\u03b1"),  # α
+  TRB = list(data = "ext_fig1e_data.csv", stats = "ext_fig1e_stats.csv",
+             pdf  = "ext_fig1e.pdf", chain_display = "\u03b2"),  # β
+  TRG = list(data = "ext_fig1f_data.csv", stats = "ext_fig1f_stats.csv",
+             pdf  = "ext_fig1f.pdf", chain_display = "\u03b3")   # γ
 )
 
-# CLONOTYPE TRACKING ----
-run_clonotype_tracking(
-  data_list = data,
-  target_aa = "CALWEVQELGKKIKVF",
-  out_csv_name = "fig5j_clonotype_tracking_data_clone17.csv",
-  out_plot_name = "clonetracking_17.pdf"
+# `patients` lists the patient IDs whose samples enter each clonotype-tracking
+# figure; samples are selected by matching "PatientN-" against the file name.
+clonotype_map <- list(
+  fig5b = list(
+    target     = "CATWDRRKKLF",
+    chain      = "TRG",
+    patients   = c("Patient2", "Patient17", "Patient18",
+                   "Patient23", "Patient26", "Patient27"),
+    csv        = "fig5b.csv",
+    counts_csv = "fig5b_counts.csv",
+    pdf        = "fig5b.pdf",
+    ymax       = 0.025,
+    width      = 11, height = 10
+  ),
+  fig5c = list(
+    target     = "CALWEVQELGKKIKVF",
+    chain      = "TRG",
+    patients   = c("Patient1", "Patient3", "Patient4", "Patient5"),
+    csv        = "fig5c.csv",
+    counts_csv = "fig5c_counts.csv",
+    pdf        = "fig5c.pdf",
+    ymax       = 0.1,
+    width      = 9,  height = 9
+  ),
+  fig5f = list(
+    target     = "CAAKQAGYSTLTF",
+    chain      = "TRA",
+    patients   = c("Patient2"),
+    csv        = "fig5f.csv",
+    counts_csv = "fig5f_counts.csv",
+    pdf        = "fig5f.pdf",
+    ymax       = 0.18,
+    width      = 10, height = 10
+  ),
+  fig5g = list(
+    target     = "CASSVIAETYEQYF",
+    chain      = "TRB",
+    patients   = c("Patient2"),
+    csv        = "fig5g.csv",
+    counts_csv = "fig5g_counts.csv",
+    pdf        = "fig5g.pdf",
+    ymax       = 0.3,
+    width      = 10, height = 10
+  )
 )
+
+build_patient_regex <- function(patient_ids) {
+  paste0(patient_ids, "-", collapse = "|")
+}
+
+# ---------------------------------------------------------------------------
+# Compute CSVs from the raw MiXCR clones output
+# ---------------------------------------------------------------------------
+if (run_compute_stage) {
+  message("repLoad(", input_repdir, ")")
+  anbl_repdata <- repLoad(input_repdir)
+  samples <- names(anbl_repdata$data)
+  data    <- anbl_repdata$data[samples]
+  meta    <- anbl_repdata$meta[anbl_repdata$meta$Sample %in% samples, ]
+  meta    <- add_metadata_columns(meta)
+
+  # PBMC diversity (Ext Fig 1a/b/c)
+  for (chain_keep in names(pbmc_csv_map)) {
+    m <- pbmc_csv_map[[chain_keep]]
+    compute_diversity_csv(data, meta, "PBMC", chain_keep,
+                          PBMC_TIMEPOINTS, m$data, m$stats)
+  }
+
+  # Tumor diversity (Ext Fig 1d/e/f)
+  for (chain_keep in names(tumor_csv_map)) {
+    m <- tumor_csv_map[[chain_keep]]
+    compute_diversity_csv(data, meta, "tumor", chain_keep,
+                          TUMOR_TIMEPOINTS, m$data, m$stats)
+  }
+
+  # Arm contingency (Ext Fig 1 panel)
+  compute_arm_contingency_csv(tumor_csv_map)
+
+  # Clonotype tracking (Fig 5b/c/f/g)
+  for (k in names(clonotype_map)) {
+    info <- clonotype_map[[k]]
+    compute_clonotype_tracking_csv(data,
+                                   build_patient_regex(info$patients),
+                                   info$chain,
+                                   info$target,
+                                   info$csv,
+                                   info$counts_csv)
+  }
+} else {
+  message("input_repdir not found, skipping recomputation: ", input_repdir)
+}
+
+# ---------------------------------------------------------------------------
+# Render figures from CSVs
+# ---------------------------------------------------------------------------
+# PBMC diversity (Ext Fig 1a/b/c)
+for (chain_keep in names(pbmc_csv_map)) {
+  m <- pbmc_csv_map[[chain_keep]]
+  plot_diversity_from_csv(
+    data_csv     = m$data,
+    stats_csv    = m$stats,
+    time_levels  = PBMC_TIMEPOINTS,
+    colors       = batlow_colors_4,
+    title_text   = paste0("PBMC Hill Q=1 diversity (", chain_keep, ")"),
+    with_boxplot = TRUE,
+    width_cm     = 6,
+    height_cm    = 4.2,
+    out_pdf      = m$pdf
+  )
+}
+
+# Tumor diversity (Ext Fig 1d/e/f)
+for (chain_keep in names(tumor_csv_map)) {
+  m <- tumor_csv_map[[chain_keep]]
+  plot_diversity_from_csv(
+    data_csv     = m$data,
+    stats_csv    = m$stats,
+    time_levels  = TUMOR_TIMEPOINTS,
+    colors       = tumor_colors_2,
+    title_text   = paste0("Tumor Hill Q=1 diversity (", chain_keep, ")"),
+    with_boxplot = FALSE,
+    width_cm     = 4,
+    height_cm    = 4.2,
+    out_pdf      = m$pdf
+  )
+}
+
+# Clonotype tracking (Fig 5b/c/f/g)
+for (k in names(clonotype_map)) {
+  info <- clonotype_map[[k]]
+  plot_clonotype_tracking_from_csv(
+    out_csv        = info$csv,
+    out_counts_csv = info$counts_csv,
+    target_aa      = info$target,
+    y_max          = info$ymax,
+    width_cm       = info$width,
+    height_cm      = info$height,
+    out_pdf        = info$pdf
+  )
+}

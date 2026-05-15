@@ -1,0 +1,6 @@
+patient,delta_neuro_PT_minus_DX,delta_immune_PT_minus_DX,trajectory_group
+Patient1,-0.102101063300097,0.0719864500644534,immune_rebuilding
+Patient3,-0.0390089535008695,0.133674190719919,immune_rebuilding
+Patient4,0.0973831029877991,-0.229834529525949,immune_desertification
+Patient2,-0.380599586722907,0.281738042276601,immune_rebuilding
+Patient5,0.021061722803485,-0.23432493977334,immune_desertification

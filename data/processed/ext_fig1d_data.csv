@@ -1,0 +1,11 @@
+Sample,Q,Value,patient,timepoint
+ANBL-CHP-Patient1-DX-R-DNA_mixcr_out.clones_TRA,1,175.120687366786,Patient1,tDX
+ANBL-CHP-Patient1-PT-R-DNA_mixcr_out.clones_TRA,1,136.482537212879,Patient1,tPT
+ANBL-CHP-Patient3-DX-R-DNA_mixcr_out.clones_TRA,1,135.858311501739,Patient3,tDX
+ANBL-CHP-Patient3-PT-R-DNA_mixcr_out.clones_TRA,1,157.239860473528,Patient3,tPT
+ANBL-CHP-Patient4-DX-R-DNA_mixcr_out.clones_TRA,1,2288.54942053613,Patient4,tDX
+ANBL-CHP-Patient4-PT-R-DNA_mixcr_out.clones_TRA,1,80.6475688604017,Patient4,tPT
+ANBL-CHP-Patient2-DX-R-DNA_mixcr_out.clones_TRA,1,52.2750685289226,Patient2,tDX
+ANBL-CHP-Patient2-PT-R-DNA_mixcr_out.clones_TRA,1,85.9895388085332,Patient2,tPT
+ANBL-CHP-Patient5-DX-R-DNA_mixcr_out.clones_TRA,1,1340.52778547965,Patient5,tDX
+ANBL-CHP-Patient5-PT-R-DNA_mixcr_out.clones_TRA,1,40.5892855910894,Patient5,tPT

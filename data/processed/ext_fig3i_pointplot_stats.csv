@@ -1,0 +1,5 @@
+metric,value
+n_pairs,5.0
+mean_PT_minus_DX_delta,0.523205477812418
+paired_ttest_p,0.0172700378411661
+wilcoxon_p,0.0625

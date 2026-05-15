@@ -1,0 +1,3 @@
+metric,group1,group2,alternative,U_stat,p_value,p_value_two_sided,n_group1,n_group2,min_possible_one_sided_p_with_n3_vs_n2
+delta_neuro_PT_minus_DX,immune_rebuilding,immune_desertification,less,0,0.1,0.2,3,2,0.1
+delta_immune_PT_minus_DX,immune_rebuilding,immune_desertification,greater,6,0.1,0.2,3,2,0.1
